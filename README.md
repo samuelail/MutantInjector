@@ -2,6 +2,8 @@
 
 MutantInjector is a powerful, lightweight Swift library for network request interception and mocking in iOS and macOS applications. It provides an elegant solution for testing and development by allowing you to mock network responses without hitting real endpoints.
 
+![Banner Image](https://github.com/samuelail/MutantInjector/blob/main/Images/mutant%20injector.png?raw=true)
+
 ## Features
 
 - **Zero-configuration setup** - One line to initialize the interceptor for all network requests
