@@ -5,20 +5,21 @@ import PackageDescription
 
 let package = Package(
     name: "MutantInjector",
+    platforms: [
+        .iOS(.v13),
+        .macOS(.v10_15)
+    ],
     products: [
-        // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
             name: "MutantInjector",
             targets: ["MutantInjector"]),
     ],
     targets: [
-        // Targets are the basic building blocks of a package, defining a module or a test suite.
-        // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "MutantInjector"),
+            name: "MutantInjector",
+            dependencies: []),
         .testTarget(
             name: "MutantInjectorTests",
-            dependencies: ["MutantInjector"]
-        ),
+            dependencies: ["MutantInjector"]),
     ]
 )
