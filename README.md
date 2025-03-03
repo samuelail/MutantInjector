@@ -23,7 +23,7 @@ Add the following dependency to your `Package.swift` file:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/yourusername/MutantInjector.git", from: "1.0.0")
+    .package(url: "https://github.com/samuelail/MutantInjector.git", from: "1.0.0")
 ]
 ```
 
