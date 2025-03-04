@@ -73,7 +73,7 @@ public struct MockResponseInfo: Sendable {
  * A thread-safe manager for mock responses using a dispatch queue to synchronize access.
  * This avoids static variables to prevent concurrency issues.
  */
-@objc public class MockResponseManager: NSObject {
+@objc public class MockResponseManager: NSObject, @unchecked Sendable  {
     /// Dictionary that maps URL strings to status codes and corresponding mock response information
     private var mockResponses: [String: [Int: MockResponseInfo]] = [:]
     
