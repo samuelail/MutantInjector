@@ -7,14 +7,8 @@
 
 import Foundation
 
-/**
- * SwizzleRegistry
- *
- * Manages swizzling state without using static variables.
- * Uses Objective-C runtime to store state.
- */
 @objc public class SwizzleRegistry: NSObject {
-    // Create keys without using static variables
+    // Create keys
     private let isSwizzledKey = UnsafeRawPointer(bitPattern: "com.mutantinjector.isSwizzledKey".hashValue)!
     private let swizzleQueueKey = UnsafeRawPointer(bitPattern: "com.mutantinjector.swizzleQueueKey".hashValue)!
     

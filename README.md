@@ -100,6 +100,56 @@ MutantInjector.addMockResponse(
 )
 ```
 
+### Logging a request
+
+In addition to intercepting requests and mocking responses, MutantInjection also allows you to log the API requests that your app is making.
+
+```swift
+/**
+ * The RequestLogMode options for logging are:
+ * - `.none`: No request logging will be performed (default mode).
+ * - `.compact`: Logs only the request method, URL, and body (if present).
+ * - `.verbose`: Logs full request details including headers and body.
+ */
+ 
+// Log all requests in verbose mode
+MutantInjector.setRequestLogMode(.verbose)
+
+// Log only specific URLs in compact mode
+MutantInjector.setRequestLogMode(.compact, for: [
+    "https://api.example.com/users",
+    "https://api.example.com/posts"
+])
+
+// Log requests with a custom callback to handle the log data
+MutantInjector.setRequestLogMode(.verbose) { logInfo in
+    print("🌐 \(logInfo.method) \(logInfo.url)")
+    if let headers = logInfo.headers {
+        print("📋 Headers: \(headers)")
+    }
+    if let body = logInfo.body {
+        print("📦 Body: \(body)")
+    }
+}
+
+// Log specific URLs with callback
+MutantInjector.setRequestLogMode(.compact, 
+                                for: ["https://api.example.com/login"]) { logInfo in
+    print("Login request: \(logInfo.method) \(logInfo.url)")
+}
+```
+
+### RequestLogInfo Structure:
+
+```swift
+public struct RequestLogInfo {
+    public let method: String       // HTTP method (GET, POST, etc.)
+    public let url: String         // Full URL
+    public let headers: [String: String]?  // Headers (verbose mode only)
+    public let body: Data?       // Request body data (if present)
+}
+```
+
 ## Complete Test Example
 
 ```swift

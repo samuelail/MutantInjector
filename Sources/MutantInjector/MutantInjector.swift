@@ -7,12 +7,6 @@
 
 import Foundation
 
-/**
- * MutantInjector
- *
- * A utility class that enables network request interception and mocking for testing purposes.
- * Now uses registry classes to avoid static variables.
- */
 public class MutantInjector {
     /**
      * Sets up the global network interceptor.
@@ -71,6 +65,19 @@ public class MutantInjector {
             statusCode: statusCode,
             fileURL: fileURL
         )
+    }
+    
+    /**
+     * setRequestLogMode(_:for:callback:)
+     *
+     * Configures the level of detail for request logging across all mock requests.
+     *
+     * - Parameter mode: The desired logging level (.none, .compact, or .verbose)
+     * - Parameter urls: URLs to log. If empty, logs all intercepted requests
+     * - Parameter callback: Optional callback to handle request log information
+     */
+    public class func setRequestLogMode(_ mode: RequestLogMode, for urls: [String] = [], callback: ((RequestLogInfo) -> Void)? = nil) {
+        MockResponseRegistry.sharedManager().setRequestLogMode(mode, for: urls, callback: callback)
     }
     
     /**

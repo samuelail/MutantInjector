@@ -31,7 +31,6 @@ public struct MockResponseInfo: Sendable {
  * MockResponseRegistry
  *
  * Global access point to the MockResponseManager without using static variables.
- * Uses Objective-C runtime to store a singleton instance.
  */
 @objc public class MockResponseRegistry: NSObject {
     // Create keys for associated object WITHOUT using static variables
@@ -71,11 +70,22 @@ public struct MockResponseInfo: Sendable {
  * MockResponseManager
  *
  * A thread-safe manager for mock responses using a dispatch queue to synchronize access.
- * This avoids static variables to prevent concurrency issues.
  */
 @objc public class MockResponseManager: NSObject, @unchecked Sendable  {
     /// Dictionary that maps URL strings to status codes and corresponding mock response information
     private var mockResponses: [String: [Int: MockResponseInfo]] = [:]
+    
+    /// URLs to log (empty array means log all requests)
+    private var urlsToLog: Set<String> = []
+    
+    /// The current request logging mode (defaults to .none)
+    private var requestLogMode: RequestLogMode = .none
+    
+    /// Callback for handling request logs
+    private var requestLogCallback: ((RequestLogInfo) -> Void)?
+    
+    /// Dedicated queue for thread-safe logging operations
+    private let logQueue = DispatchQueue(label: "com.mutantinjector.logging")
     
     /// Queue to synchronize access to mockResponses
     private let queue: DispatchQueue
@@ -84,6 +94,23 @@ public struct MockResponseInfo: Sendable {
     override init() {
         self.queue = DispatchQueue(label: "com.mutantinjector.responsemanager", attributes: .concurrent)
         super.init()
+    }
+
+    /**
+     * setRequestLogMode(_:callback:)
+     *
+     * Configures the level of detail for request logging and sets the callback.
+     *
+     * - Parameter mode: The desired logging level (.none, .compact, or .verbose)
+     * - Parameter urls: URLs to log. If empty, logs all intercepted requests
+     * - Parameter callback: The callback to handle log information (optional)
+     */
+    public func setRequestLogMode(_ mode: RequestLogMode, for urls: [String] = [], callback: ((RequestLogInfo) -> Void)? = nil) {
+        queue.async(flags: .barrier) { [weak self] in
+            self?.requestLogMode = mode
+            self?.urlsToLog = Set(urls)
+            self?.requestLogCallback = callback
+        }
     }
     
     /**
@@ -101,6 +128,23 @@ public struct MockResponseInfo: Sendable {
     public func hasMockResponse(for url: String) -> Bool {
         queue.sync {
             return self.mockResponses.keys.contains(url)
+        }
+    }
+    
+    /**
+     * Checks if a URL should be logged based on the current logging configuration.
+     */
+    public func shouldLogRequest(for url: String) -> Bool {
+        queue.sync {
+            // If logging is disabled, don't log
+            guard self.requestLogMode != .none else { return false }
+            
+            // If no specific URLs are configured, log all requests
+            if self.urlsToLog.isEmpty {
+                return true
+            }
+            // Check if this URL should be logged
+            return self.urlsToLog.contains(url)
         }
     }
     
@@ -142,4 +186,73 @@ public struct MockResponseInfo: Sendable {
             }
         }
     }
-}
+    
+    /**
+     * logRequest(_:)
+     *
+     * Public method that handles request logging based on the current log mode.
+     *
+     * - Parameter request: The URLRequest to be logged
+     */
+    public func logRequest(_ request: URLRequest) {
+        guard let url = request.url?.absoluteString else { return }
+        
+        // Check if this request should be logged
+        guard shouldLogRequest(for: url) else { return }
+        
+        logQueue.async { [weak self] in
+            guard let self = self else { return }
+            
+            switch self.requestLogMode {
+            case .none:
+                return
+            case .compact:
+                self.logCompact(request)
+            case .verbose:
+                self.logVerbose(request)
+            }
+        }
+    }
+    
+    /**
+     * logCompact(_:)
+     *
+     * Creates request log info in compact format (method, URL, and body only).
+     *
+     * - Parameter request: The URLRequest to be logged
+     */
+    private func logCompact(_ request: URLRequest) {
+        let method = request.httpMethod ?? "GET"
+        let url = request.url?.absoluteString ?? "unknown URL"
+        let body = request.httpBody
+        
+        let logInfo = RequestLogInfo(
+            method: method,
+            url: url,
+            headers: nil,
+            body: body
+        )
+        requestLogCallback?(logInfo)
+    }
+    
+    /**
+     * logVerbose(_:)
+     *
+     * Creates request log info in verbose format (method, URL, headers, and body).
+     *
+     * - Parameter request: The URLRequest to be logged
+     */
+    private func logVerbose(_ request: URLRequest) {
+        let method = request.httpMethod ?? "GET"
+        let url = request.url?.absoluteString ?? "unknown URL"
+        let headers = request.allHTTPHeaderFields
+        let body = request.httpBody
+        
+        let logInfo = RequestLogInfo(
+            method: method,
+            url: url,
+            headers: headers,
+            body: body
+        )
+        requestLogCallback?(logInfo)
+    }}
