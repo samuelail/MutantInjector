@@ -33,36 +33,9 @@ public struct MockResponseInfo: Sendable {
  * Global access point to the MockResponseManager without using static variables.
  */
 @objc public class MockResponseRegistry: NSObject {
-    // Create keys for associated object WITHOUT using static variables
-    private let managerKey = UnsafeRawPointer(bitPattern: "com.mutantinjector.managerKey".hashValue)!
-    
-    // Private constructor prevents direct instantiation
-    private override init() {
-        super.init()
-    }
-    
-    // Singleton accessor using a function with no static variables
+    // Singleton accessor
     @objc public class func sharedManager() -> MockResponseManager {
-        let registry = MockResponseRegistry()
-        let nsObjectClass: AnyClass = NSObject.self
-        
-        // Check if we already have a manager
-        if let existingManager = objc_getAssociatedObject(nsObjectClass, registry.managerKey) as? MockResponseManager {
-            return existingManager
-        }
-        
-        // Create a new manager
-        let newManager = MockResponseManager()
-        
-        // Store it using associated object pattern
-        objc_setAssociatedObject(
-            nsObjectClass,
-            registry.managerKey,
-            newManager,
-            .OBJC_ASSOCIATION_RETAIN
-        )
-        
-        return newManager
+        return MockResponseManager.shared
     }
 }
 
@@ -90,6 +63,8 @@ public struct MockResponseInfo: Sendable {
     /// Queue to synchronize access to mockResponses
     private let queue: DispatchQueue
     
+    @objc public static let shared = MockResponseManager()
+    
     /// Initialize with a new dispatch queue
     override init() {
         self.queue = DispatchQueue(label: "com.mutantinjector.responsemanager", attributes: .concurrent)
@@ -107,9 +82,10 @@ public struct MockResponseInfo: Sendable {
      */
     public func setRequestLogMode(_ mode: RequestLogMode, for urls: [String] = [], callback: ((RequestLogInfo) -> Void)? = nil) {
         queue.async(flags: .barrier) { [weak self] in
-            self?.requestLogMode = mode
-            self?.urlsToLog = Set(urls)
-            self?.requestLogCallback = callback
+            guard let self = self else { return }
+            self.requestLogMode = mode
+            self.urlsToLog = Set(urls)
+            self.requestLogCallback = callback
         }
     }
     
@@ -222,17 +198,25 @@ public struct MockResponseInfo: Sendable {
      * - Parameter request: The URLRequest to be logged
      */
     private func logCompact(_ request: URLRequest) {
-        let method = request.httpMethod ?? "GET"
-        let url = request.url?.absoluteString ?? "unknown URL"
-        let body = request.httpBody
-        
-        let logInfo = RequestLogInfo(
-            method: method,
-            url: url,
-            headers: nil,
-            body: body
-        )
-        requestLogCallback?(logInfo)
+        queue.sync { [weak self] in
+            guard let self = self else { return }
+            let callback = self.requestLogCallback
+            let mode = self.requestLogMode
+            let method = request.httpMethod ?? "GET"
+            let url = request.url?.absoluteString ?? "unknown URL"
+            let body = request.httpBody
+            
+            let logInfo = RequestLogInfo(
+                method: method,
+                url: url,
+                headers: nil,
+                body: body
+            )
+            
+            DispatchQueue.global().async {
+                callback?(logInfo)
+            }
+        }
     }
     
     /**

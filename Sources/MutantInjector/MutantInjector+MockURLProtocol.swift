@@ -7,9 +7,20 @@
 
 import Foundation
 
-public class MockURLProtocol: URLProtocol {
+public class MockURLProtocol: URLProtocol, @unchecked Sendable {
     private var dataTask: URLSessionDataTask?
-    private var isCancelled = false
+    private lazy var testBundle = Bundle(for: type(of: self))
+    private let cancelledQueue = DispatchQueue(label: "mockurlprotocol.cancelled")
+    private var _isCancelled = false
+
+    private var isCancelled: Bool {
+        get {
+            return cancelledQueue.sync { _isCancelled }
+        }
+        set {
+            cancelledQueue.sync { _isCancelled = newValue }
+        }
+    }
     
     // Key to mark requests that should bypass the protocol
     private static let bypassKey = "MockURLProtocolBypass"
@@ -59,7 +70,7 @@ public class MockURLProtocol: URLProtocol {
         
         // We have a mock response, so return it
         let statusCode: Int
-        if statusToResponseInfo.keys.contains(200) {
+        if statusToResponseInfo[200] != nil {
             statusCode = 200
         } else {
             statusCode = statusToResponseInfo.keys.first ?? 404
@@ -75,10 +86,14 @@ public class MockURLProtocol: URLProtocol {
         if let responseData = loadMockData(responseInfo: responseInfo) {
             guard !isCancelled else { return }
             
-            let response = HTTPURLResponse(url: request.url!,
-                                           statusCode: statusCode,
-                                           httpVersion: "HTTP/1.1",
-                                           headerFields: ["Content-Type": "application/json"])!
+            guard let url = request.url,
+                  let response = HTTPURLResponse(url: url,
+                                               statusCode: statusCode,
+                                               httpVersion: "HTTP/1.1",
+                                               headerFields: ["Content-Type": "application/json"]) else {
+                client?.urlProtocol(self, didFailWithError: URLError(.badURL))
+                return
+            }
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
             client?.urlProtocol(self, didLoad: responseData)
             client?.urlProtocolDidFinishLoading(self)
@@ -100,7 +115,8 @@ public class MockURLProtocol: URLProtocol {
         guard !isCancelled else { return }
         
         // Create a mutable copy of the request and mark it to bypass our protocol
-        let mutableRequest = NSMutableURLRequest(url: request.url!,
+        guard let url = request.url else { return }
+        let mutableRequest = NSMutableURLRequest(url: url,
                                                  cachePolicy: request.cachePolicy,
                                                  timeoutInterval: request.timeoutInterval)
         mutableRequest.httpMethod = request.httpMethod ?? "GET"
@@ -115,24 +131,25 @@ public class MockURLProtocol: URLProtocol {
         let session = URLSession.shared
         
         dataTask = session.dataTask(with: mutableRequest as URLRequest) { [weak self] data, response, error in
-            guard let self = self, !self.isCancelled else {
+            guard let strongSelf = self else { return }
+            guard !strongSelf.isCancelled else {
                 return
             }
             
             if let error = error {
-                self.client?.urlProtocol(self, didFailWithError: error)
+                strongSelf.client?.urlProtocol(strongSelf, didFailWithError: error)
             } else {
                 if let response = response {
-                    self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+                    strongSelf.client?.urlProtocol(strongSelf, didReceive: response, cacheStoragePolicy: .notAllowed)
                 }
                 if let data = data {
-                    self.client?.urlProtocol(self, didLoad: data)
+                    strongSelf.client?.urlProtocol(strongSelf, didLoad: data)
                 }
-                self.client?.urlProtocolDidFinishLoading(self)
+                strongSelf.client?.urlProtocolDidFinishLoading(strongSelf)
             }
             
             // Clean up
-            self.dataTask = nil
+            strongSelf.dataTask = nil
         }
         dataTask?.resume()
     }
@@ -141,6 +158,7 @@ public class MockURLProtocol: URLProtocol {
      * Stops loading the request.
      */
     override public func stopLoading() {
+        isCancelled = true
         dataTask?.cancel()
         dataTask = nil
     }
@@ -163,7 +181,6 @@ public class MockURLProtocol: URLProtocol {
         guard let filename = responseInfo.filename else { return nil }
         
         // Try to load from test bundle first
-        let testBundle = Bundle(for: type(of: self))
         if let url = testBundle.url(forResource: filename, withExtension: "json") {
             do {
                 return try Data(contentsOf: url)
