@@ -70,7 +70,7 @@ public struct MockResponseInfo: Sendable {
         self.queue = DispatchQueue(label: "com.mutantinjector.responsemanager", attributes: .concurrent)
         super.init()
     }
-
+    
     /**
      * setRequestLogMode(_:callback:)
      *
@@ -80,7 +80,7 @@ public struct MockResponseInfo: Sendable {
      * - Parameter urls: URLs to log. If empty, logs all intercepted requests
      * - Parameter callback: The callback to handle log information (optional)
      */
-    public func setRequestLogMode(_ mode: RequestLogMode, for urls: [String] = [], callback: ((RequestLogInfo) -> Void)? = nil) {
+    public func setRequestLogMode(_ mode: RequestLogMode, for urls: [String] = [], callback: (@Sendable (RequestLogInfo) -> Void)? = nil) {
         queue.async(flags: .barrier) { [weak self] in
             guard let self = self else { return }
             self.requestLogMode = mode
@@ -198,25 +198,22 @@ public struct MockResponseInfo: Sendable {
      * - Parameter request: The URLRequest to be logged
      */
     private func logCompact(_ request: URLRequest) {
-        queue.sync { [weak self] in
-            guard let self = self else { return }
-            let callback = self.requestLogCallback
-            let mode = self.requestLogMode
-            let method = request.httpMethod ?? "GET"
-            let url = request.url?.absoluteString ?? "unknown URL"
-            let body = request.httpBody
-            
-            let logInfo = RequestLogInfo(
-                method: method,
-                url: url,
-                headers: nil,
-                body: body
-            )
-            
-            DispatchQueue.global().async {
-                callback?(logInfo)
-            }
+        let callback = queue.sync { [weak self] in
+            return self?.requestLogCallback
         }
+        
+        let method = request.httpMethod ?? "GET"
+        let url = request.url?.absoluteString ?? "unknown URL"
+        let body = request.httpBody
+        
+        let logInfo = RequestLogInfo(
+            method: method,
+            url: url,
+            headers: nil,
+            body: body
+        )
+        
+        callback?(logInfo)
     }
     
     /**
@@ -227,6 +224,10 @@ public struct MockResponseInfo: Sendable {
      * - Parameter request: The URLRequest to be logged
      */
     private func logVerbose(_ request: URLRequest) {
+        let callback = queue.sync { [weak self] in
+            return self?.requestLogCallback
+        }
+        
         let method = request.httpMethod ?? "GET"
         let url = request.url?.absoluteString ?? "unknown URL"
         let headers = request.allHTTPHeaderFields
@@ -238,5 +239,7 @@ public struct MockResponseInfo: Sendable {
             headers: headers,
             body: body
         )
-        requestLogCallback?(logInfo)
-    }}
+        
+        callback?(logInfo)
+    }
+}

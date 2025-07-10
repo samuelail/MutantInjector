@@ -15,7 +15,7 @@
  * - `.compact`: Logs only the request method, URL, and body (if present).
  * - `.verbose`: Logs full request details including headers and body.
  */
-public enum RequestLogMode {
+public enum RequestLogMode: Sendable {
     /// No request logging will be performed
     case none
     

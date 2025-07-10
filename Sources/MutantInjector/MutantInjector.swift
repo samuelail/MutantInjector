@@ -76,7 +76,7 @@ public class MutantInjector {
      * - Parameter urls: URLs to log. If empty, logs all intercepted requests
      * - Parameter callback: Optional callback to handle request log information
      */
-    public class func setRequestLogMode(_ mode: RequestLogMode, for urls: [String] = [], callback: ((RequestLogInfo) -> Void)? = nil) {
+    public class func setRequestLogMode(_ mode: RequestLogMode, for urls: [String] = [], callback: (@Sendable (RequestLogInfo) -> Void)? = nil) {
         MockResponseRegistry.sharedManager().setRequestLogMode(mode, for: urls, callback: callback)
     }
     
