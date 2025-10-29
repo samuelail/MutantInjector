@@ -35,7 +35,20 @@ public class MockURLProtocol: URLProtocol, @unchecked Sendable {
         
         guard let url = request.url?.absoluteString else { return false }
         let manager = MockResponseRegistry.sharedManager()
-        return manager.hasMockResponse(for: url) || manager.shouldLogRequest(for: url)
+        
+        // Check for regular mock
+        if manager.hasMockResponse(for: url) {
+            return true
+        }
+        
+        // Check for GraphQL mock
+        if let operationName = extractGraphQLOperationName(from: request) {
+            if manager.hasGraphQLMockResponse(for: url, operationName: operationName) {
+                return true
+            }
+        }
+        
+        return manager.shouldLogRequest(for: url)
     }
     
     /**
@@ -52,7 +65,6 @@ public class MockURLProtocol: URLProtocol, @unchecked Sendable {
         guard !isCancelled else { return }
         
         let manager = MockResponseRegistry.sharedManager()
-        
         manager.logRequest(request)
         
         guard let url = request.url?.absoluteString else {
@@ -62,13 +74,25 @@ public class MockURLProtocol: URLProtocol, @unchecked Sendable {
             return
         }
         
-        // Check if we have a mock response
-        guard let statusToResponseInfo = manager.getMockResponse(for: url) else {
-            performActualRequest()
+        // First check for GraphQL mock
+        if let operationName = Self.extractGraphQLOperationName(from: request),
+           let statusToResponseInfo = manager.getGraphQLMockResponse(for: url, operationName: operationName) {
+            returnMockResponse(statusToResponseInfo: statusToResponseInfo)
             return
         }
         
-        // We have a mock response, so return it
+        // Then check for regular URL mock
+        if let statusToResponseInfo = manager.getMockResponse(for: url) {
+            returnMockResponse(statusToResponseInfo: statusToResponseInfo)
+            return
+        }
+        
+        // No mock found, perform actual request
+        performActualRequest()
+    }
+
+    // Extract the mock response logic into a helper method
+    private func returnMockResponse(statusToResponseInfo: [Int: MockResponseInfo]) {
         let statusCode: Int
         if statusToResponseInfo[200] != nil {
             statusCode = 200
@@ -100,7 +124,7 @@ public class MockURLProtocol: URLProtocol, @unchecked Sendable {
         } else {
             guard !isCancelled else { return }
             
-            let errorMessage = "Failed to load mock data for URL: \(url)"
+            let errorMessage = "Failed to load mock data"
             let userInfo = [NSLocalizedDescriptionKey: errorMessage]
             let error = NSError(domain: "MockURLProtocol", code: 1001, userInfo: userInfo)
             client?.urlProtocol(self, didFailWithError: error)
@@ -202,5 +226,14 @@ public class MockURLProtocol: URLProtocol, @unchecked Sendable {
         
         NSLog("MutantInjector: Could not find \(filename).json in any bundle")
         return nil
+    }
+    
+    private class func extractGraphQLOperationName(from request: URLRequest) -> String? {
+        guard let body = request.httpBody,
+              let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
+              let operationName = json["operationName"] as? String else {
+            return nil
+        }
+        return operationName
     }
 }

@@ -163,6 +163,33 @@ public struct MockResponseInfo: Sendable {
         }
     }
     
+    public func addMockResponse(forGraphQL operationName: String, url: String, statusCode: Int, jsonFilename: String) {
+        let key = graphQLKey(url: url, operationName: operationName)
+        let responseInfo = MockResponseInfo(filename: jsonFilename)
+        queue.async(flags: .barrier) { [weak self] in
+            guard let self = self else { return }
+            if self.mockResponses[key] == nil {
+                self.mockResponses[key] = [statusCode: responseInfo]
+            } else {
+                self.mockResponses[key]?[statusCode] = responseInfo
+            }
+        }
+    }
+    
+    public func hasGraphQLMockResponse(for url: String, operationName: String) -> Bool {
+        let key = graphQLKey(url: url, operationName: operationName)
+        return queue.sync {
+            return self.mockResponses.keys.contains(key)
+        }
+    }
+    
+    public func getGraphQLMockResponse(for url: String, operationName: String) -> [Int: MockResponseInfo]? {
+        let key = graphQLKey(url: url, operationName: operationName)
+        return queue.sync {
+            return self.mockResponses[key]
+        }
+    }
+    
     /**
      * logRequest(_:)
      *
@@ -242,4 +269,9 @@ public struct MockResponseInfo: Sendable {
         
         callback?(logInfo)
     }
+    
+    private func graphQLKey(url: String, operationName: String) -> String {
+        return "graphql://\(url)#\(operationName)"
+    }
+
 }
