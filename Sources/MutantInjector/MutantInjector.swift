@@ -57,7 +57,7 @@ public class MutantInjector {
     }
     
     /**
-     * Adds a mock response for a specific operationName using a JSON file from a bundle.
+     * Adds a mock response for a specific graphQL operationName using a JSON file from a bundle.
      */
     public class func addMockResponse(forGraphQL operationName: String, url: String, statusCode: Int, jsonFilename: String) {
         MockResponseRegistry.sharedManager().addMockResponse(

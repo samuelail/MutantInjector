@@ -91,7 +91,9 @@ public class MockURLProtocol: URLProtocol, @unchecked Sendable {
         performActualRequest()
     }
 
-    // Extract the mock response logic into a helper method
+    /**
+     * Returns the mocked response for the specific request
+     */
     private func returnMockResponse(statusToResponseInfo: [Int: MockResponseInfo]) {
         let statusCode: Int
         if statusToResponseInfo[200] != nil {
@@ -147,7 +149,6 @@ public class MockURLProtocol: URLProtocol, @unchecked Sendable {
         mutableRequest.allHTTPHeaderFields = request.allHTTPHeaderFields
         mutableRequest.httpBody = request.httpBody
         
-        // Mark this request to bypass MockURLProtocol
         URLProtocol.setProperty(true, forKey: Self.bypassKey, in: mutableRequest)
         
         // Create a new URLSession with default configuration that includes our protocol
