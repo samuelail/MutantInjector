@@ -62,8 +62,13 @@ public class MockURLProtocol: URLProtocol, @unchecked Sendable {
             return
         }
         
+        let method = requestMethod(from: request)
+        
         // Check if we have a mock response
-        guard let statusToResponseInfo = manager.getMockResponse(for: url) else {
+        guard let statusToResponseInfo =
+                manager.getMockResponse(for: url, method: method)
+                ?? manager.getMockResponse(for: url, method: .all)
+        else {
             performActualRequest()
             return
         }
@@ -202,5 +207,17 @@ public class MockURLProtocol: URLProtocol, @unchecked Sendable {
         
         NSLog("MutantInjector: Could not find \(filename).json in any bundle")
         return nil
+    }
+    
+    // Mapping for URLRequest httpMethods to our custom RequestMethod
+    private func requestMethod(from request: URLRequest) -> RequestMethod {
+        switch (request.httpMethod ?? "GET").uppercased() {
+        case "GET":    return .get
+        case "POST":   return .post
+        case "PUT":    return .put
+        case "PATCH":  return .patch
+        case "DELETE": return .delete
+        default:       return .all
+        }
     }
 }

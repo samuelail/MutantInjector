@@ -41,6 +41,7 @@ func setUp() {
     MutantInjector.addMockResponse(
         for: "https://api.example.com/users",
         statusCode: 200,
+        method: .get, // optional, defaults to .all
         jsonFilename: "users_success"
     )
 }
@@ -59,6 +60,7 @@ func tearDown() {
 MutantInjector.addMockResponse(
     for: "https://api.example.com/users",
     statusCode: 200,
+    method: .get, // optional, defaults to .all
     jsonFilename: "users_success"
 )
 
@@ -73,6 +75,7 @@ MutantInjector.addMockResponse(
 MutantInjector.addMockResponse(
     for: "https://api.example.com/users",
     statusCode: 200,
+    method: .get, // optional, defaults to .all
     jsonFilename: "users_success"
 )
 
@@ -80,6 +83,7 @@ MutantInjector.addMockResponse(
 MutantInjector.addMockResponse(
     for: "https://api.example.com/users",
     statusCode: 404,
+    method: .get, // optional, defaults to .all
     jsonFilename: "not_found_error"
 )
 
@@ -96,6 +100,7 @@ let fileURL = Bundle(for: type(of: self)).url(forResource: "users_success", with
 MutantInjector.addMockResponse(
     for: "https://api.example.com/users",
     statusCode: 200,
+    method: .get, // optional, defaults to .all
     fileURL: fileURL
 )
 ```
@@ -177,6 +182,7 @@ class NetworkTests: XCTestCase {
         MutantInjector.addMockResponse(
             for: "https://api.example.com/users",
             statusCode: 200,
+            method: .get, // optional, defaults to .all
             jsonFilename: "users_success"
         )
         
@@ -217,12 +223,14 @@ func setupMockResponses() {
     MutantInjector.addMockResponse(
         for: "https://api.yourapp.com/v1/users",
         statusCode: 200,
+        method: .get, // optional, defaults to .all
         jsonFilename: "dev_users"
     )
     
     MutantInjector.addMockResponse(
         for: "https://api.yourapp.com/v1/products",
         statusCode: 200,
+        method: .get, // optional, defaults to .all
         jsonFilename: "dev_products"
     )
 }
@@ -241,6 +249,7 @@ if FeatureFlags.isNewFeatureEnabled {
     MutantInjector.addMockResponse(
         for: "https://api.yourapp.com/v2/new-feature",
         statusCode: 200,
+        method: .get, // optional, defaults to .all
         jsonFilename: "new_feature_response"
     )
 }
@@ -262,12 +271,14 @@ class DemoModeHelper {
         MutantInjector.addMockResponse(
             for: "https://api.yourapp.com/v1/login",
             statusCode: 200,
+            method: .get, // optional, defaults to .all
             jsonFilename: "demo_login"
         )
         
         MutantInjector.addMockResponse(
             for: "https://api.yourapp.com/v1/dashboard",
             statusCode: 200,
+            method: .get, // optional, defaults to .all
             jsonFilename: "demo_dashboard"
         )
     }
@@ -301,6 +312,7 @@ struct UserProfileView_Previews: PreviewProvider {
         MutantInjector.addMockResponse(
             for: "https://api.yourapp.com/v1/users/preview-user-id",
             statusCode: 200,
+            method: .get, // optional, defaults to .all
             jsonFilename: "preview_user_profile"
         )
     }
@@ -338,12 +350,14 @@ struct MockResponseCatalog {
         MutantInjector.addMockResponse(
             for: "https://api.yourapp.com/v1/login",
             statusCode: 200,
+            method: .get, // optional, defaults to .all
             jsonFilename: "dev_login_success"
         )
         
         MutantInjector.addMockResponse(
             for: "https://api.yourapp.com/v1/login",
             statusCode: 401,
+            method: .get, // optional, defaults to .all
             jsonFilename: "dev_login_failed"
         )
     }
