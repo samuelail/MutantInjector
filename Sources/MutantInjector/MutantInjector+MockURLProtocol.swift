@@ -74,27 +74,18 @@ public class MockURLProtocol: URLProtocol, @unchecked Sendable {
             return
         }
         
-        // First check for GraphQL mock
-        if let operationName = Self.extractGraphQLOperationName(from: request),
-           let statusToResponseInfo = manager.getGraphQLMockResponse(for: url, operationName: operationName) {
-            returnMockResponse(statusToResponseInfo: statusToResponseInfo)
+        let method = requestMethod(from: request)
+        
+        // Check if we have a mock response
+        guard let statusToResponseInfo =
+                manager.getMockResponse(for: url, method: method)
+                ?? manager.getMockResponse(for: url, method: .all)
+        else {
+            performActualRequest()
             return
         }
         
-        // Then check for regular URL mock
-        if let statusToResponseInfo = manager.getMockResponse(for: url) {
-            returnMockResponse(statusToResponseInfo: statusToResponseInfo)
-            return
-        }
-        
-        // No mock found, perform actual request
-        performActualRequest()
-    }
-
-    /**
-     * Returns the mocked response for the specific request
-     */
-    private func returnMockResponse(statusToResponseInfo: [Int: MockResponseInfo]) {
+        // We have a mock response, so return it
         let statusCode: Int
         if statusToResponseInfo[200] != nil {
             statusCode = 200
@@ -236,5 +227,17 @@ public class MockURLProtocol: URLProtocol, @unchecked Sendable {
             return nil
         }
         return operationName
+    }
+    
+    // Mapping for URLRequest httpMethods to our custom RequestMethod
+    private func requestMethod(from request: URLRequest) -> RequestMethod {
+        switch (request.httpMethod ?? "GET").uppercased() {
+        case "GET":    return .get
+        case "POST":   return .post
+        case "PUT":    return .put
+        case "PATCH":  return .patch
+        case "DELETE": return .delete
+        default:       return .all
+        }
     }
 }

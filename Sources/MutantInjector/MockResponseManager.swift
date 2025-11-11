@@ -46,7 +46,7 @@ public struct MockResponseInfo: Sendable {
  */
 @objc public class MockResponseManager: NSObject, @unchecked Sendable  {
     /// Dictionary that maps URL strings to status codes and corresponding mock response information
-    private var mockResponses: [String: [Int: MockResponseInfo]] = [:]
+    private var mockResponses: [String: [RequestMethod: [Int: MockResponseInfo]]] = [:]
     
     /// URLs to log (empty array means log all requests)
     private var urlsToLog: Set<String> = []
@@ -127,41 +127,48 @@ public struct MockResponseInfo: Sendable {
     /**
      * Gets the mock response info for a specific URL and status code.
      */
-    public func getMockResponse(for url: String) -> [Int: MockResponseInfo]? {
+    public func getMockResponse(for url: String, method: RequestMethod) -> [Int: MockResponseInfo]? {
         queue.sync {
-            return self.mockResponses[url]
+            return self.mockResponses[url]?[method]
         }
     }
+
     
     /**
      * Adds a mock response for a specific URL using a JSON filename.
      */
-    public func addMockResponse(for url: String, statusCode: Int, jsonFilename: String) {
+    public func addMockResponse(for url: String, statusCode: Int, method: RequestMethod, jsonFilename: String) {
         let responseInfo = MockResponseInfo(filename: jsonFilename)
         queue.async(flags: .barrier) { [weak self] in
             guard let self = self else { return }
             if self.mockResponses[url] == nil {
-                self.mockResponses[url] = [statusCode: responseInfo]
+                self.mockResponses[url] = [method: [statusCode: responseInfo]]
+            } else if self.mockResponses[url]?[method] == nil {
+                self.mockResponses[url]?[method] = [statusCode: responseInfo]
             } else {
-                self.mockResponses[url]?[statusCode] = responseInfo
+                self.mockResponses[url]?[method]?[statusCode] = responseInfo
             }
         }
     }
+
     
     /**
      * Adds a mock response for a specific URL using a direct fileURL.
      */
-    public func addMockResponse(for url: String, statusCode: Int, fileURL: URL) {
+    public func addMockResponse(for url: String, statusCode: Int, method: RequestMethod, fileURL: URL) {
         let responseInfo = MockResponseInfo(fileURL: fileURL)
         queue.async(flags: .barrier) { [weak self] in
             guard let self = self else { return }
             if self.mockResponses[url] == nil {
-                self.mockResponses[url] = [statusCode: responseInfo]
+                self.mockResponses[url] = [method: [statusCode: responseInfo]]
+            } else if self.mockResponses[url]?[method] == nil {
+                self.mockResponses[url]?[method] = [statusCode: responseInfo]
             } else {
-                self.mockResponses[url]?[statusCode] = responseInfo
+                self.mockResponses[url]?[method]?[statusCode] = responseInfo
             }
         }
     }
+
     
     public func addMockResponse(forGraphQL operationName: String, url: String, statusCode: Int, jsonFilename: String) {
         let key = graphQLKey(url: url, operationName: operationName)

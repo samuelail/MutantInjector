@@ -48,10 +48,11 @@ public class MutantInjector {
     /**
      * Adds a mock response for a specific URL using a JSON file from a bundle.
      */
-    public class func addMockResponse(for url: String, statusCode: Int, jsonFilename: String) {
+    public class func addMockResponse(for url: String, statusCode: Int, method: RequestMethod = .all, jsonFilename: String) {
         MockResponseRegistry.sharedManager().addMockResponse(
             for: url,
             statusCode: statusCode,
+            method: method,
             jsonFilename: jsonFilename
         )
     }
@@ -71,10 +72,11 @@ public class MutantInjector {
     /**
      * Adds a mock response for a specific URL using a direct URL to a JSON file.
      */
-    public class func addMockResponse(for url: String, statusCode: Int, fileURL: URL) {
+    public class func addMockResponse(for url: String, statusCode: Int, method: RequestMethod = .all, fileURL: URL) {
         MockResponseRegistry.sharedManager().addMockResponse(
             for: url,
             statusCode: statusCode,
+            method: method,
             fileURL: fileURL
         )
     }
