@@ -12,7 +12,7 @@ public class MockURLProtocol: URLProtocol, @unchecked Sendable {
     private lazy var testBundle = Bundle(for: type(of: self))
     private let cancelledQueue = DispatchQueue(label: "mockurlprotocol.cancelled")
     private var _isCancelled = false
-
+    
     private var isCancelled: Bool {
         get {
             return cancelledQueue.sync { _isCancelled }
@@ -76,11 +76,21 @@ public class MockURLProtocol: URLProtocol, @unchecked Sendable {
         
         let method = requestMethod(from: request)
         
-        // Check if we have a mock response
-        guard let statusToResponseInfo =
-                manager.getMockResponse(for: url, method: method)
-                ?? manager.getMockResponse(for: url, method: .all)
-        else {
+        // Check for GraphQL mock response first
+        var statusToResponseInfo: [Int: MockResponseInfo]? = nil
+        if let operationName = Self.extractGraphQLOperationName(from: request) {
+            statusToResponseInfo = manager.getGraphQLMockResponse(for: url, operationName: operationName, method: method)
+            ?? manager.getGraphQLMockResponse(for: url, operationName: operationName, method: .all)
+        }
+        
+        // If no GraphQL mock found, check for regular mock response
+        if statusToResponseInfo == nil {
+            statusToResponseInfo = manager.getMockResponse(for: url, method: method)
+            ?? manager.getMockResponse(for: url, method: .all)
+        }
+        
+        // If no mock response at all, perform actual request
+        guard let statusToResponseInfo = statusToResponseInfo else {
             performActualRequest()
             return
         }
@@ -105,9 +115,9 @@ public class MockURLProtocol: URLProtocol, @unchecked Sendable {
             
             guard let url = request.url,
                   let response = HTTPURLResponse(url: url,
-                                               statusCode: statusCode,
-                                               httpVersion: "HTTP/1.1",
-                                               headerFields: ["Content-Type": "application/json"]) else {
+                                                 statusCode: statusCode,
+                                                 httpVersion: "HTTP/1.1",
+                                                 headerFields: ["Content-Type": "application/json"]) else {
                 client?.urlProtocol(self, didFailWithError: URLError(.badURL))
                 return
             }

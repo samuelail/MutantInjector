@@ -65,6 +65,7 @@ public class MutantInjector {
             forGraphQL: operationName,
             url: url,
             statusCode: statusCode,
+            method: .post,
             jsonFilename: jsonFilename)
 
     }
@@ -79,6 +80,19 @@ public class MutantInjector {
             method: method,
             fileURL: fileURL
         )
+    }
+    
+    /**
+     * Adds a mock response for a specific graphQL operationName using a direct URL to a JSON file..
+     */
+    public class func addMockResponse(forGraphQL operationName: String, url: String, statusCode: Int, fileURL: URL) {
+        MockResponseRegistry.sharedManager().addMockResponse(
+            forGraphQL: operationName,
+            url: url,
+            statusCode: statusCode,
+            method: .post,
+            fileURL: fileURL)
+
     }
     
     /**

@@ -170,18 +170,36 @@ public struct MockResponseInfo: Sendable {
     }
 
     
-    public func addMockResponse(forGraphQL operationName: String, url: String, statusCode: Int, jsonFilename: String) {
+    public func addMockResponse(forGraphQL operationName: String, url: String, statusCode: Int, method: RequestMethod, jsonFilename: String) {
         let key = graphQLKey(url: url, operationName: operationName)
         let responseInfo = MockResponseInfo(filename: jsonFilename)
         queue.async(flags: .barrier) { [weak self] in
             guard let self = self else { return }
             if self.mockResponses[key] == nil {
-                self.mockResponses[key] = [statusCode: responseInfo]
+                self.mockResponses[key] = [method: [statusCode: responseInfo]]
+            } else if self.mockResponses[key]?[method] == nil {
+                self.mockResponses[key]?[method] = [statusCode: responseInfo]
             } else {
-                self.mockResponses[key]?[statusCode] = responseInfo
+                self.mockResponses[key]?[method]?[statusCode] = responseInfo
             }
         }
     }
+    
+    public func addMockResponse(forGraphQL operationName: String, url: String, statusCode: Int, method: RequestMethod, fileURL: URL) {
+        let key = graphQLKey(url: url, operationName: operationName)
+        let responseInfo = MockResponseInfo(fileURL: fileURL)
+        queue.async(flags: .barrier) { [weak self] in
+            guard let self = self else { return }
+            if self.mockResponses[key] == nil {
+                self.mockResponses[key] = [method: [statusCode: responseInfo]]
+            } else if self.mockResponses[key]?[method] == nil {
+                self.mockResponses[key]?[method] = [statusCode: responseInfo]
+            } else {
+                self.mockResponses[key]?[method]?[statusCode] = responseInfo
+            }
+        }
+    }
+    
     
     public func hasGraphQLMockResponse(for url: String, operationName: String) -> Bool {
         let key = graphQLKey(url: url, operationName: operationName)
@@ -190,10 +208,10 @@ public struct MockResponseInfo: Sendable {
         }
     }
     
-    public func getGraphQLMockResponse(for url: String, operationName: String) -> [Int: MockResponseInfo]? {
+    public func getGraphQLMockResponse(for url: String, operationName: String, method: RequestMethod) -> [Int: MockResponseInfo]? {
         let key = graphQLKey(url: url, operationName: operationName)
         return queue.sync {
-            return self.mockResponses[key]
+            return self.mockResponses[key]?[method]
         }
     }
     
