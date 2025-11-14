@@ -144,17 +144,13 @@ public class MockURLProtocol: URLProtocol, @unchecked Sendable {
         // Apply response delay if specified
         let delay = responseInfo.additionalParams?.responseDelay ?? 0
         
-        let deliverResponse = { [weak self] in
-            guard let self = self, !self.isCancelled else { return }
-            self.deliverMockResponse(responseInfo: responseInfo, statusCode: statusCode)
-        }
-        
         if delay > 0 {
-            DispatchQueue.global().asyncAfter(deadline: .now() + .milliseconds(Int(delay * 1000))) {
-                deliverResponse()
+            DispatchQueue.global().asyncAfter(deadline: .now() + .milliseconds(Int(delay * 1000))) { [weak self] in
+                guard let self = self, !self.isCancelled else { return }
+                self.deliverMockResponse(responseInfo: responseInfo, statusCode: statusCode)
             }
         } else {
-            deliverResponse()
+            deliverMockResponse(responseInfo: responseInfo, statusCode: statusCode)
         }
     }
     
