@@ -15,15 +15,25 @@ import Foundation
 public struct MockResponseInfo: Sendable {
     let fileURL: URL?
     let filename: String?
+    let additionalParams: AdditionalRequestParameters?
+    let identifier: String?
     
-    public init(fileURL: URL) {
+    public init(fileURL: URL,
+                additionalParams: AdditionalRequestParameters? = nil,
+                identifier: String? = nil) {
         self.fileURL = fileURL
         self.filename = nil
+        self.additionalParams = additionalParams
+        self.identifier = identifier
     }
     
-    public init(filename: String) {
+    public init(filename: String,
+                additionalParams: AdditionalRequestParameters? = nil,
+                identifier: String? = nil) {
         self.filename = filename
         self.fileURL = nil
+        self.additionalParams = additionalParams
+        self.identifier = identifier
     }
 }
 
@@ -46,7 +56,7 @@ public struct MockResponseInfo: Sendable {
  */
 @objc public class MockResponseManager: NSObject, @unchecked Sendable  {
     /// Dictionary that maps URL strings to status codes and corresponding mock response information
-    private var mockResponses: [String: [RequestMethod: [Int: MockResponseInfo]]] = [:]
+    private var mockResponses: [String: [RequestMethod: [Int: [MockResponseInfo]]]] = [:]
     
     /// URLs to log (empty array means log all requests)
     private var urlsToLog: Set<String> = []
@@ -127,7 +137,7 @@ public struct MockResponseInfo: Sendable {
     /**
      * Gets the mock response info for a specific URL and status code.
      */
-    public func getMockResponse(for url: String, method: RequestMethod) -> [Int: MockResponseInfo]? {
+    public func getMockResponse(for url: String, method: RequestMethod) -> [Int: [MockResponseInfo]]? {
         queue.sync {
             return self.mockResponses[url]?[method]
         }
@@ -137,16 +147,18 @@ public struct MockResponseInfo: Sendable {
     /**
      * Adds a mock response for a specific URL using a JSON filename.
      */
-    public func addMockResponse(for url: String, statusCode: Int, method: RequestMethod, jsonFilename: String) {
-        let responseInfo = MockResponseInfo(filename: jsonFilename)
+    public func addMockResponse(for url: String, statusCode: Int, method: RequestMethod, jsonFilename: String, additionalParams: AdditionalRequestParameters?, identifier: String?) {
+        let responseInfo = MockResponseInfo(filename: jsonFilename, additionalParams: additionalParams, identifier: identifier)
         queue.async(flags: .barrier) { [weak self] in
             guard let self = self else { return }
             if self.mockResponses[url] == nil {
-                self.mockResponses[url] = [method: [statusCode: responseInfo]]
+                self.mockResponses[url] = [method: [statusCode: [responseInfo]]]
             } else if self.mockResponses[url]?[method] == nil {
-                self.mockResponses[url]?[method] = [statusCode: responseInfo]
+                self.mockResponses[url]?[method] = [statusCode: [responseInfo]]
+            } else if self.mockResponses[url]?[method]?[statusCode] == nil {
+                self.mockResponses[url]?[method]?[statusCode] = [responseInfo]
             } else {
-                self.mockResponses[url]?[method]?[statusCode] = responseInfo
+                self.mockResponses[url]?[method]?[statusCode]?.append(responseInfo)
             }
         }
     }
@@ -155,16 +167,18 @@ public struct MockResponseInfo: Sendable {
     /**
      * Adds a mock response for a specific URL using a direct fileURL.
      */
-    public func addMockResponse(for url: String, statusCode: Int, method: RequestMethod, fileURL: URL) {
-        let responseInfo = MockResponseInfo(fileURL: fileURL)
+    public func addMockResponse(for url: String, statusCode: Int, method: RequestMethod, fileURL: URL, additionalParams: AdditionalRequestParameters? = nil, identifier: String?) {
+        let responseInfo = MockResponseInfo(fileURL: fileURL, additionalParams: additionalParams, identifier: identifier)
         queue.async(flags: .barrier) { [weak self] in
             guard let self = self else { return }
             if self.mockResponses[url] == nil {
-                self.mockResponses[url] = [method: [statusCode: responseInfo]]
+                self.mockResponses[url] = [method: [statusCode: [responseInfo]]]
             } else if self.mockResponses[url]?[method] == nil {
-                self.mockResponses[url]?[method] = [statusCode: responseInfo]
+                self.mockResponses[url]?[method] = [statusCode: [responseInfo]]
+            } else if self.mockResponses[url]?[method]?[statusCode] == nil {
+                self.mockResponses[url]?[method]?[statusCode] = [responseInfo]
             } else {
-                self.mockResponses[url]?[method]?[statusCode] = responseInfo
+                self.mockResponses[url]?[method]?[statusCode]?.append(responseInfo)
             }
         }
     }
