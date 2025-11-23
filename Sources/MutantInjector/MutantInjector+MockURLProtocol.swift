@@ -81,7 +81,7 @@ public class MockURLProtocol: URLProtocol, @unchecked Sendable {
                 
                 if !data.isEmpty {
                     bodyData = data
-                    NSLog("✅ [MutantInjector] Read \(data.count) bytes from stream in canonicalRequest")
+                    NSLog("[MutantInjector] Read \(data.count) bytes from stream in canonicalRequest")
                     
                     // Store as httpBody and remove the stream
                     mutableRequest.httpBody = data
@@ -203,27 +203,29 @@ public class MockURLProtocol: URLProtocol, @unchecked Sendable {
     private func performActualRequest() {
         guard !isCancelled else { return }
         
-        // Create a mutable copy of the request and mark it to bypass our protocol
         guard let url = request.url else { return }
         let mutableRequest = NSMutableURLRequest(url: url,
                                                  cachePolicy: request.cachePolicy,
                                                  timeoutInterval: request.timeoutInterval)
         mutableRequest.httpMethod = request.httpMethod ?? "GET"
         mutableRequest.allHTTPHeaderFields = request.allHTTPHeaderFields
-        mutableRequest.httpBody = request.httpBody
+        
+        // Use the captured body data that we extracted earlier
+        if let bodyData = capturedBodyData {
+            mutableRequest.httpBody = bodyData
+            NSLog("[MutantInjector] Setting body for actual request (\(bodyData.count) bytes)")
+        } else {
+            NSLog("[MutantInjector] No body data available for actual request!")
+        }
         
         // Mark this request to bypass MockURLProtocol
         URLProtocol.setProperty(true, forKey: Self.bypassKey, in: mutableRequest)
         
-        // Create a new URLSession with default configuration that includes our protocol
-        // but the specific request will bypass due to the property we set
         let session = URLSession.shared
         
         dataTask = session.dataTask(with: mutableRequest as URLRequest) { [weak self] data, response, error in
             guard let strongSelf = self else { return }
-            guard !strongSelf.isCancelled else {
-                return
-            }
+            guard !strongSelf.isCancelled else { return }
             
             if let error = error {
                 strongSelf.client?.urlProtocol(strongSelf, didFailWithError: error)
@@ -237,7 +239,6 @@ public class MockURLProtocol: URLProtocol, @unchecked Sendable {
                 strongSelf.client?.urlProtocolDidFinishLoading(strongSelf)
             }
             
-            // Clean up
             strongSelf.dataTask = nil
         }
         dataTask?.resume()
@@ -305,7 +306,7 @@ public class MockURLProtocol: URLProtocol, @unchecked Sendable {
         from statusToResponseInfo: [Int: [MockResponseInfo]],  // ← Now array of MockResponseInfo
         bodyData: Data?
     ) -> (Int, MockResponseInfo)? {
-        NSLog("🔍 [MutantInjector] Finding match for URL: \(request.url?.absoluteString ?? "unknown")")
+        NSLog("[MutantInjector] Finding match for URL: \(request.url?.absoluteString ?? "unknown")")
         // Flatten all response infos to check if ANY have body matching conditions
         let allResponseInfos = statusToResponseInfo.values.flatMap { $0 }
         let hasBodyMatchConditions = allResponseInfos.contains { responseInfo in
@@ -319,7 +320,7 @@ public class MockURLProtocol: URLProtocol, @unchecked Sendable {
                     let matches = bodyMatches(bodyData)
                     if matches {
                         let debugLabel = responseInfo.identifier ?? "unnamed"
-                        NSLog("✅ [MutantInjector] Found matching response at index \(index) (\(debugLabel))!")
+                        NSLog("[MutantInjector] Found matching response at index \(index) (\(debugLabel))!")
                         return (statusCode, responseInfo)
                     }
                 }
@@ -328,11 +329,11 @@ public class MockURLProtocol: URLProtocol, @unchecked Sendable {
         
         // If we had body match conditions but none matched, return nil (no mock)
         if hasBodyMatchConditions {
-            NSLog("⚠️ [MutantInjector] Body match conditions exist but none matched - performing actual request")
+            NSLog("[MutantInjector] Body match conditions exist but none matched - performing actual request")
             return nil
         }
         
-        NSLog("🔍 [MutantInjector] No body match conditions configured, using default mock")
+        NSLog("[MutantInjector] No body match conditions configured, using default mock")
         
         // If no body-matching responses were configured, fall back to default behavior
         // Prefer status 200, then first available
@@ -342,7 +343,7 @@ public class MockURLProtocol: URLProtocol, @unchecked Sendable {
                   let first = responseInfos.first {
             return (statusCode, first)
         }
-        NSLog("⚠️ [MutantInjector] No responses available")
+        NSLog("[MutantInjector] No responses available")
         return nil
     }
     
