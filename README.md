@@ -105,6 +105,54 @@ MutantInjector.addMockResponse(
 )
 ```
 
+### Delaying a response
+You can simulate a longer response time for requests by delaying the time it takes MutantInjector to respond to a request.
+
+```swift
+MutantInjector.addMockResponse(
+    for: "https://api.example.com/users",
+    statusCode: 404,
+    method: .get, // optional, defaults to .all
+    jsonFilename: "response",
+    additionalParams: AdditionalRequestParameters(
+    responseDelay: 2.0 // Delay response for 2 seconds
+    )
+)
+```
+
+### GraphQL / Matching Request Body
+Although MutantInjector does not include any dedicated GraphQL methods, you can use the body-matching feature to intercept GraphQL requests or target a specific request when multiple requests are sent to the same URL endpoint.
+
+```swift
+MutantInjector.addMockResponse(
+    for: "https://api.example.com/users",
+    statusCode: 404,
+    method: .get, // optional, defaults to .all
+    jsonFilename: "response",
+    additionalParams: AdditionalRequestParameters(
+        bodyMatches: BodyMatchHelpers.jsonContainsObject { dict in
+            if let op = dict["operationName"] as? String, op == "GetUser" { //Matches a dictionary's key value
+                return true
+            }
+            return false
+        }
+    )
+)
+``` 
+
+```swift
+MutantInjector.addMockResponse(
+    for: "https://api.example.com/users",
+    statusCode: 404,
+    method: .get, // optional, defaults to .all
+    jsonFilename: "response",
+    additionalParams: AdditionalRequestParameters(
+    responseDelay: 2.0 // Delay response for 2 seconds
+    )
+)
+)
+```
+
 ### Logging a request
 
 In addition to intercepting requests and mocking responses, MutantInjection also allows you to log the API requests that your app is making.
@@ -398,14 +446,20 @@ public static func tearDownGlobalInterceptor()
 public static func addMockResponse(
     for url: String, 
     statusCode: Int, 
-    jsonFilename: String
+    method: RequestMethod,
+    jsonFilename: String,
+    additionalParams: AdditionalRequestParameters?,
+    identifier: String?
 )
 
 // Add a mock response using a direct URL to a JSON file
 public static func addMockResponse(
     for url: String, 
     statusCode: Int, 
-    fileURL: URL
+    method: RequestMethod,
+    fileURL: URL,
+    additionalParams: AdditionalRequestParameters?,
+    identifier: String?
 )
 
 // Clear all registered mock responses

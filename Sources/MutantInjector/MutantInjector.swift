@@ -68,6 +68,7 @@ public class MutantInjector {
             statusCode: statusCode,
             method: method,
             fileURL: fileURL,
+            additionalParams: additionalParams,
             identifier: identifier
         )
     }
