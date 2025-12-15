@@ -140,19 +140,6 @@ MutantInjector.addMockResponse(
 )
 ``` 
 
-```swift
-MutantInjector.addMockResponse(
-    for: "https://api.example.com/users",
-    statusCode: 404,
-    method: .get, // optional, defaults to .all
-    jsonFilename: "response",
-    additionalParams: AdditionalRequestParameters(
-    responseDelay: 2.0 // Delay response for 2 seconds
-    )
-)
-)
-```
-
 ### Logging a request
 
 In addition to intercepting requests and mocking responses, MutantInjection also allows you to log the API requests that your app is making.
